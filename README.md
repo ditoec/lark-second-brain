@@ -34,11 +34,13 @@
   <br /><br />
   <em>Every source updates existing pages instead of just appending new ones. Contradictions reconcile automatically. Your vault compounds while you sleep.</em>
   <br /><br />
-  <em>43 commands &middot; auto-synthesis &middot; thinking tools that argue with you</em>
+  <em>48 commands &middot; auto-synthesis &middot; thinking tools that argue with you</em>
   <br /><br />
   <em>live research from X, the web, and YouTube &middot; 4 scheduled agents &middot; 4 role presets</em>
   <br /><br />
   <em>write-time AI-first validator &middot; <code>/create-command</code> interview flow &middot; multilingual trigger schema</em>
+  <br /><br />
+  <em>Lark Suite sync &middot; Wiki &middot; Base &middot; Contacts &middot; Calendar &middot; Tasks</em>
   <br /><br />
   <a href="#what-happens-when-you-install-this">See it in action</a> &middot;
   <a href="#43-commands">All commands</a> &middot;
@@ -51,6 +53,11 @@
   <strong>v0.10 - The Architect (May 2026):</strong> new <code>/obsidian-architect</code> scans a codebase and writes maintained architecture notes into your vault - refreshable, never clobbering your edits.<br/>
   <em>Plus free key-less research, Google Calendar commands, anti-hallucination guards, and tests + CI.</em><br/>
   <a href="CHANGELOG.md">See the changelog &rarr;</a>
+</p>
+
+<p align="center">
+  <strong>Lark Suite Extension:</strong> 5 new commands sync your vault bidirectionally with Lark (飞书) - Wiki, Base (bitable), Contacts, Calendar, and Tasks.<br/>
+  <em>Tasks, assignments, schedules, meeting notes, and keypersons stay in sync between Obsidian and your Lark workspace.</em>
 </p>
 
 <p align="center">
@@ -183,6 +190,18 @@ Free transcript via youtube-transcript-api. Optional metadata + top comments via
 
 **You never open Obsidian.** Everything happens through Claude.
 
+**Your Lark workspace has new tasks:** `/obsidian-lark-tasks-sync pull`
+Claude pulls the new Lark Tasks into vault task notes, updates the kanban board columns, and resolves assignees to `[[Person]]` wikilinks. Subtasks become checklist items under `## Subtasks`.
+
+**A meeting just ended in Lark Calendar:** `/obsidian-lark-calendar-sync pull <event-id>`
+Claude creates a vault meeting note pre-filled with title, date, and attendees - cross-linked to person notes. Notes, Decisions, and Action items sections are left empty for you to fill. Never fabricated.
+
+**You updated person notes with new context:** `/obsidian-lark-contacts-sync push`
+Claude pushes name, role, org, and email back to Lark Contacts - deduplicating by email before creating, and writing `lark_user_id:` back to the vault note so future syncs are exact.
+
+**You want your projects and tasks as a Lark database:** `/obsidian-lark-base-sync init`
+Claude creates four Lark Base tables (Tasks, Projects, Persons, Decisions) and populates them from your vault. The vault stays the source of truth; Base is the structured view your team can filter and assign.
+
 ---
 
 ## Before & After
@@ -206,6 +225,10 @@ Free transcript via youtube-transcript-api. Optional metadata + top comments via
 | Researching what you already know | Re-research from scratch | `/research-deep` scans vault first, fills only the gaps, flags contradictions |
 | YouTube videos | Watch passively, forget | `/youtube [url]` transcript + summary + quotes saved to vault |
 | Vault notes for future-Claude | Notes for human reading | AI-first rule: every note has "For future Claude" preamble + recency markers + citations |
+| Syncing tasks to Lark | Manual copy-paste or not at all | `/obsidian-lark-tasks-sync push` syncs vault kanban tasks with assignee resolution |
+| Meeting notes in two places | Lark calendar event and vault note diverge | `/obsidian-lark-calendar-sync` pulls events as vault stubs, pushes vault notes as events |
+| Team contacts vs vault persons | Separate lists, always out of date | `/obsidian-lark-contacts-sync` links person notes to Lark users via `lark_user_id:` |
+| Projects visible to team | Only you can see vault structure | `/obsidian-lark-base-sync` pushes tasks/projects/decisions to Lark Base tables |
 
 ---
 
@@ -234,6 +257,11 @@ Free transcript via youtube-transcript-api. Optional metadata + top comments via
   |                                          |
   +------------------------------------------+
   |                                          |
+  |   LAYER 5: Lark Suite Sync (5 commands)  |
+  |   Vault meets your team workspace        |
+  |                                          |
+  +------------------------------------------+
+  |                                          |
   |   ALWAYS ON                              |
   |   Background agent + 4 scheduled agents  |
   |   Auto-synthesis + save reminders        |
@@ -241,17 +269,18 @@ Free transcript via youtube-transcript-api. Optional metadata + top comments via
   +------------------------------------------+
 ```
 
-43 commands total. The 3 Google Calendar commands (in Operations) are Claude Code only, so the Codex / Gemini / OpenCode builds ship 39.
+48 commands total. The 3 Google Calendar commands (in Operations) are Claude Code only, so the Codex / Gemini / OpenCode builds ship 44.
 
 **Layer 1** saves, organizes, ingests, reconciles, exports, schedules your calendar, and maintains your vault.
 **Layer 2** challenges your ideas, surfaces hidden patterns, bridges unrelated domains, and graduates ideas into projects.
 **Layer 3** loads your identity and current state so every session picks up where the last one ended.
 **Layer 4** pulls live external knowledge into the vault: X posts, X trends, web research with citations (key-less by default), YouTube and podcast transcripts. Vault-first synthesis knows what you already know.
+**Layer 5** syncs your vault bidirectionally with Lark (飞书): Wiki pages, Base tables, Contacts, Calendar events, and Tasks - including assignee resolution and subtasks.
 **Always On** keeps the vault alive without you lifting a finger.
 
 ---
 
-## 43 Commands
+## 48 Commands
 
 ### Operations -- Claude remembers
 
@@ -285,11 +314,20 @@ Free transcript via youtube-transcript-api. Optional metadata + top comments via
 | `/obsidian-init` | Generates `_CLAUDE.md`, `index.md`, `log.md` |
 | `/obsidian-architect` | Scans a codebase and writes maintained architecture notes (overview, modules, decisions) into the vault; re-run to refresh |
 | `/create-command` | Interview flow that scaffolds a new command into `commands/<name>.md`, no markdown editing |
-| `/obsidian-lark-sync` | Sync local vault notes to/from Lark Wiki -- push, pull, bidirectional, or status |
-| `/obsidian-lark-base-sync` | Sync vault tasks, projects, persons, decisions to/from Lark Base tables |
-| `/obsidian-lark-contacts-sync` | Sync vault person notes to/from Lark Contacts directory |
-| `/obsidian-lark-calendar-sync` | Sync meeting notes and task due dates to/from Lark Calendar |
-| `/obsidian-lark-tasks-sync` | Sync vault kanban tasks and assignments to/from Lark Tasks |
+
+### Lark Suite sync -- vault meets your team
+
+Bidirectional sync between the Obsidian vault and the Lark (飞书) workspace. The vault is always the primary source of truth; Lark is the sync target. State is tracked per service in `.lark-*.json` files at the vault root. All commands share the same `push / pull / sync / status / init` sub-command pattern.
+
+| Command | What it syncs | State file |
+|---|---|---|
+| `/obsidian-lark-sync` | Vault `.md` files <-> Lark Wiki pages (push, pull, bidirectional, or status) | `.lark-sync.json` |
+| `/obsidian-lark-base-sync` | `type: task`, `type: project`, `type: person`, `type: decision` notes <-> four Lark Base tables | `.lark-base-sync.json` |
+| `/obsidian-lark-contacts-sync` | `type: person` notes <-> Lark Contacts directory; deduplicates by email; writes `lark_user_id:` back to vault | `.lark-contacts-sync.json` |
+| `/obsidian-lark-calendar-sync` | `type: meeting` notes and task `due:` dates <-> Lark Calendar events; pulled stubs have empty Notes/Decisions/Action items | `.lark-calendar-sync.json` |
+| `/obsidian-lark-tasks-sync` | `type: task` notes + kanban board items <-> Lark Tasks; assignees resolved via `lark_user_id:`; subtasks synced | `.lark-tasks-sync.json` |
+
+**Setup:** requires [lark-cli](https://github.com/larksuite/lark-cli) installed and authenticated (`lark auth login`). Configure IDs either as env vars or in `_CLAUDE.md` frontmatter fields (`lark_space_id:`, `lark_base_app_token:`, `lark_calendar_id:`).
 
 ### Thinking -- Claude thinks with you
 
@@ -682,6 +720,18 @@ The core vault commands work anywhere Claude Code runs. The research toolkit was
 
 ### Can I have a separate vault per project (multi-repo workflows)?
 Yes. The default `scripts/setup.sh` writes `OBSIDIAN_VAULT_PATH` globally to `~/.claude/settings.json`, but every hook in this skill reads that env var at fire-time. Claude Code merges per-project `.claude/settings.json` on top of the global one, so you can put `{"env": {"OBSIDIAN_VAULT_PATH": "/path/to/repo-vault"}}` in each repo's `.claude/settings.json` and Claude will use that repo's vault whenever you launch a session from that directory. The slash commands and hooks remain globally installed; only the vault path changes. Full recipe in [`SKILL.md`](SKILL.md#per-project-vaults-multi-repo-workflows). One thing this does NOT give you: isolation within a single vault (no `--scope` on commands yet).
+
+### Does this work with Lark (飞书)?
+Yes. This fork adds 5 Lark sync commands. `/obsidian-lark-sync` handles Wiki pages (same as the original); `/obsidian-lark-base-sync` syncs tasks, projects, persons, and decisions to Lark Base tables; `/obsidian-lark-contacts-sync` links person notes to Lark Contacts by email; `/obsidian-lark-calendar-sync` pushes meeting notes and task due dates to Lark Calendar; `/obsidian-lark-tasks-sync` syncs vault kanban tasks to Lark Tasks with assignee resolution. Requires lark-cli installed and authenticated.
+
+### What does assignee resolution mean in lark-tasks-sync?
+When pushing a task to Lark, the command reads the `assignee:` frontmatter field, finds `People/<name>.md`, reads its `lark_user_id:` field, and passes that ID to the Lark Tasks API. If the person note lacks `lark_user_id:`, the assignee is skipped with a warning rather than guessing. Run `/obsidian-lark-contacts-sync` first to populate `lark_user_id:` fields across your person notes.
+
+### What happens to meeting notes pulled from Lark Calendar?
+They are created as `type: meeting` vault notes at `wiki/meetings/YYYY-MM-DD - <Title>.md` with frontmatter pre-filled from the Lark event (title, date, attendees, organizer, `lark_event_id:`). Attendees are cross-linked to `[[Person]]` notes. The `## Notes`, `## Decisions`, and `## Action items` sections are intentionally left empty - the vault never fabricates meeting content that did not actually happen.
+
+### Can I sync external contacts (not in my Lark org directory)?
+The Lark Contacts API only updates users in your organization. For external keypersons, use `/obsidian-lark-base-sync push persons` instead - it writes person notes to a Persons table in Lark Base, which has no org-membership restriction.
 
 ### How do I update to the latest version?
 ```bash
