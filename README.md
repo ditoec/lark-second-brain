@@ -287,7 +287,7 @@ Claude creates four Lark Base tables (Tasks, Projects, Persons, Decisions) and p
 | Command | What it does |
 |---|---|
 | `/obsidian-save` | Saves everything from the conversation -- decisions, tasks, people, ideas |
-| `/obsidian-ingest` | Drop a URL, PDF, audio file, or screenshot. The vault REWRITES itself. 5-15 pages touched per source. |
+| `/obsidian-ingest` | Drop a URL, PDF, audio file, screenshot, **local folder**, or **Lark Wiki space**. The vault REWRITES itself. Folder/wiki ingests run in batches with cross-batch synthesis. |
 | `/obsidian-synthesize` | Auto-finds patterns across sources and writes synthesis pages |
 | `/obsidian-reconcile` | Finds contradictions and resolves them. The vault maintains its own truth. |
 | `/obsidian-export` | Clean JSON/markdown snapshot any AI tool can read |

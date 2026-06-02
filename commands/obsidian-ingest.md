@@ -1,12 +1,18 @@
 ---
-description: Ingest a source into the vault - the vault rewrites itself around new knowledge. Every ingest updates entities, rewrites stale claims, synthesizes new concepts, and resolves contradictions.
+description: Ingest a source into the vault - the vault rewrites itself around new knowledge. Accepts a URL, file path, local folder, Lark Wiki space, or pasted text. Every ingest updates entities, rewrites stale claims, synthesizes new concepts, and resolves contradictions.
 category: research
-triggers_en: ["ingest this source", "add this article", "import this", "absorb this"]
+triggers_en: ["ingest this source", "add this article", "import this", "absorb this", "ingest this folder", "ingest lark wiki", "import wiki structure", "bulk ingest", "ingest directory", "import lark space"]
 ---
 
 Use the obsidian-second-brain skill. Execute `/obsidian-ingest $ARGUMENTS`:
 
-The argument is a URL, file path, or pasted text. If no argument, ask what to ingest.
+The argument is a URL, file path, **local folder path**, **Lark Wiki space ID or URL**, or pasted text. If no argument, ask what to ingest.
+
+Optional flags (append after the source):
+- `--dry-run` - list what would be ingested without writing anything to the vault
+- `--filter <glob>` - when ingesting a folder, only include matching files (e.g. `--filter "*.pdf"`)
+- `--shallow` - when ingesting a folder or wiki, process the top level only (no recursion)
+- `--batch-size <n>` - files to process per batch when ingesting a folder or wiki (default: 10)
 
 1. Read `_CLAUDE.md` first if it exists in the vault root
 
@@ -18,8 +24,10 @@ The argument is a URL, file path, or pasted text. If no argument, ask what to in
    - **Audio file** (.m4a, .mp3, .wav, .ogg, .webm) - transcribe, identify speakers, extract decisions/tasks/promises
    - **Image/screenshot** (.png, .jpg, .jpeg, .webp) - read/OCR the image, extract text and context
    - **Raw text** - classify by content (opinion, technical, narrative) and extract accordingly
+   - **Local folder** - argument is a path to a directory (absolute or relative to vault root); go to step 3B
+   - **Lark Wiki space** - argument is a Lark Wiki URL (`https://*.larksuite.com/wiki/...` or `https://*.feishu.cn/wiki/...`) or a bare space ID (alphanumeric, ~16 chars); go to step 3C
 
-3. Read or fetch the full source content:
+3. Read or fetch the full source content (single-source path - skip to 3B for folders, 3C for Lark Wiki):
 
    **For YouTube URLs** - try methods in this order (use the first one that works):
 
@@ -58,7 +66,70 @@ The argument is a URL, file path, or pasted text. If no argument, ask what to in
    **For PDFs** - read the file directly
    **For pasted text** - use as-is
 
-4. Extract and organize:
+3B. **Folder ingestion** (skip here when source is a local directory):
+
+   a. Scan the folder for supported file types. Supported extensions: `.md`, `.txt`, `.pdf`, `.png`, `.jpg`, `.jpeg`, `.webp`, `.mp3`, `.m4a`, `.wav`, `.ogg`, `.webm`. If `--filter` was passed, apply the glob pattern to restrict. If `--shallow`, scan only the top level; otherwise recurse into subdirectories.
+
+   b. Check each file against `raw/` to detect duplicates: compute a content hash and search the vault's `raw/` folder for any existing note with a matching `content_hash:` frontmatter field. Skip already-ingested files and report them in the summary.
+
+   c. Report the file inventory to the user before processing:
+      ```
+      Folder: /path/to/folder
+      Files found: 42  (28 .md, 8 .pdf, 4 .png, 2 .mp3)
+      Already ingested: 7 (skipping)
+      To ingest: 35
+      Batch size: 10  (4 batches)
+      ```
+      If `--dry-run` was passed, stop here and report the full file list.
+
+   d. Process files in batches (default 10 per batch). For each batch:
+      - Read all files in the batch in parallel
+      - Run steps 4-6 collectively across the batch (the parallel subagents see all batch files at once so cross-file entity deduplication happens within the batch)
+      - Save each file to `raw/` individually before moving to the next batch
+      - Report batch completion: `Batch 1/4 complete: 10 files, 3 entities, 5 concepts, 2 rewrites`
+
+   e. After all batches: run a cross-batch synthesis pass. Look for entities and concepts that appeared in multiple batches and create or update synthesis pages connecting them. This is where folder-level patterns emerge that no single file could surface.
+
+   f. Skip to step 7 (structural files update).
+
+3C. **Lark Wiki ingestion** (skip here when source is a Lark Wiki URL or space ID):
+
+   a. Resolve the space ID. If a URL was given, extract the space token from the path (`/wiki/<space-token>/...`). If already a bare ID, use it directly.
+
+   b. Fetch the full node tree using lark-cli:
+      ```bash
+      lark wiki +node-list --space-id <space-id> --as user
+      ```
+      This returns a flat list of all nodes. Build the hierarchy from `parent_node_token` fields.
+
+   c. Report the wiki inventory before processing:
+      ```
+      Lark Wiki space: <space-id>
+      Nodes found: 78  (12 folders, 66 documents)
+      Hierarchy depth: 4 levels
+      To ingest: 66 documents
+      Batch size: 10  (7 batches)
+      ```
+      If `--dry-run` was passed, show the full node tree with titles and stop here.
+      If `--shallow`, only process nodes at depth 1 (top-level documents, no nested nodes).
+
+   d. Fetch each document's content as markdown:
+      ```bash
+      lark docs +fetch --api-version v2 --doc <obj_token> --doc-format markdown --as user
+      ```
+
+   e. Mirror the wiki's folder structure into `raw/lark-wiki/<space-id>/` as markdown files:
+      - Folder nodes become directories
+      - Document nodes become `.md` files named `<node-title>.md`
+      - Preserve the hierarchy so future re-ingests can detect unchanged nodes by content hash
+
+   f. Process fetched documents in batches (same batch-size logic as 3B). Use the wiki's folder structure as topical grouping - prefer to batch documents that share a parent node so the subagents see topically related content together.
+
+   g. After all batches: run a cross-batch synthesis pass that uses the Lark Wiki's own hierarchy as a structural hint - sibling nodes in the same wiki folder are more likely to form a coherent topic cluster than random vault notes.
+
+   h. Skip to step 7 (structural files update).
+
+4. Extract and organize (single-source path only; folder/wiki paths use this logic inside each batch):
    - **Entities**: people mentioned, companies, tools, projects
    - **Concepts**: key ideas, frameworks, methodologies
    - **Claims**: specific assertions with supporting evidence
@@ -104,13 +175,23 @@ The argument is a URL, file path, or pasted text. If no argument, ask what to in
    - Any new synthesis pages created from emerging patterns
 
 9. Report back:
+
+   **Single source:**
    - Source title and type
    - **New pages created** (list)
    - **Existing pages rewritten** (list with what changed)
    - **Contradictions resolved** (list with old claim vs new claim)
    - **Synthesis pages created** (patterns that emerged from this + existing knowledge)
 
-The vault should be DIFFERENT after every ingest - not just bigger. Pages that existed before should be smarter, more connected, and more current. If an ingest only creates new pages and doesn't rewrite anything, it wasn't deep enough.
+   **Folder or Lark Wiki:**
+   - Source path / wiki space ID and total files processed
+   - Files skipped (already ingested, hash match)
+   - Batches completed
+   - Cumulative totals: new pages, rewrites, contradictions, synthesis pages
+   - **Cross-batch patterns** found (entities or concepts spanning multiple files)
+   - Any files that failed to process (list with reason)
+
+The vault should be DIFFERENT after every ingest - not just bigger. Pages that existed before should be smarter, more connected, and more current. If an ingest only creates new pages and doesn't rewrite anything, it wasn't deep enough. For folder and wiki ingests this rule applies to the batch as a whole - expect cross-file entity merging and synthesis pages that no single file could have produced.
 
 ---
 

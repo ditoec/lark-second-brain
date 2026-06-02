@@ -811,24 +811,29 @@ Hybrid command: `scripts/architect_scan.py` does a deterministic scan (stack, mo
 
 ### `/obsidian-ingest`
 
-**Ingests a source into the vault - one source touches many pages.**
+**Ingests a source into the vault - one source touches many pages. Accepts a URL, file path, local folder, Lark Wiki space, or pasted text.**
+
+Source types:
+- **Single source**: URL, file path (.md, .pdf, .png, .jpg, .mp3, .m4a, ...), or pasted text - standard pipeline
+- **Local folder**: path to a directory - scans recursively for supported files, deduplicates by content hash, processes in batches (default 10 per batch), runs a cross-batch synthesis pass after all batches
+- **Lark Wiki space**: a Lark Wiki URL or bare space ID - fetches the full node tree via lark-cli, mirrors to `raw/lark-wiki/<space-id>/`, processes in batches grouped by wiki folder hierarchy, runs a cross-batch synthesis pass
+
+Optional flags: `--dry-run` (preview only), `--filter <glob>` (folder filter), `--shallow` (top-level only), `--batch-size <n>`.
 
 Steps:
-1. Accept a URL, file path, or pasted text as the source
-2. Classify the source type before full read: article, PDF, transcript, video, or raw text
-3. Read or fetch the full source content
+1. Accept the source argument and optional flags
+2. Classify: single source, folder, or Lark Wiki space
+3. For single source: read/fetch the content directly
+   For folder: scan, deduplicate, report inventory, process in batches
+   For Lark Wiki: resolve space ID, fetch node tree via `lark wiki +node-list`, fetch each doc via `lark docs +fetch --doc-format markdown`, process in batches grouped by parent node
 4. Extract: entities (people, companies, tools), concepts, claims, action items, notable quotes
-5. Save the raw source to `Knowledge/YYYY-MM-DD — Source Title.md` with full summary and source link
-6. Spawn parallel subagents to distribute knowledge across the vault:
-   - **People agent**: create or update People/ notes for each person mentioned
-   - **Projects agent**: update existing project notes with new findings
-   - **Ideas agent**: create or append to Ideas/ for new concepts
-   - **Knowledge agent**: create or update Knowledge/ notes for factual claims and frameworks
-7. Update `index.md` with all newly created notes
-8. Append to `log.md`: `## [YYYY-MM-DD] ingest | Source Title (type) — X created, Y updated`
-9. Update today's daily note with an ingest summary
+5. Save the raw source to `raw/` (immutable). Wiki nodes mirror to `raw/lark-wiki/<space-id>/`.
+6. Spawn parallel subagents per batch to distribute knowledge across the vault
+7. After all batches: cross-batch synthesis pass for folder/wiki ingests (entity merging, cross-file patterns)
+8. Update `index.md`, operation log, and today's daily note
+9. Report: files processed, new pages, rewrites, contradictions resolved, synthesis pages, any failures
 
-A single ingest should touch 5-15 files. Compile knowledge once, distribute everywhere.
+A single-source ingest should touch 5-15 files. A folder or wiki ingest compounds that across every batch. Cross-file synthesis is where the value is.
 
 ---
 
